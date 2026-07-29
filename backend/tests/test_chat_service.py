@@ -354,3 +354,52 @@ class ChatServiceTests(unittest.IsolatedAsyncioTestCase):
 		self.assertEqual(result.state.workflow_execution["status"], "not_run")
 		self.assertEqual(result.state.workflow_validation_error["workflow_type"], "meeting")
 		self.assertIn("transcript", result.output)
+
+	async def test_run_response_preserves_original_message_across_multiple_clarifications(self) -> None:
+		agent = StubChatAgent()
+		workflow_service = StubWorkflowService(
+			workflow_result(workflow_type="meeting", artifacts={}, cache_hit=False)
+		)
+		planner = StubWorkflowPlanner(
+			WorkflowClarification(
+				workflow_type="meeting",
+				missing_fields=["transcript"],
+				message="要继续整理会议，我还需要会议纪要原文。",
+				input_payload={
+					"meeting_title": "Weekly Sync",
+					"send_to_teams": True,
+				},
+				rationale="missing transcript",
+			),
+			resolved_plan=WorkflowClarification(
+				workflow_type="meeting",
+				missing_fields=["transcript"],
+				message="我还需要完整 transcript，当前信息还不够。",
+				input_payload={},
+				rationale="followup still missing transcript",
+			),
+		)
+		store = WorkflowClarificationStore()
+		service = ChatService(
+			agent=agent,
+			workflow_service=workflow_service,
+			workflow_planner=planner,
+			workflow_clarification_store=store,
+		)
+
+		first = await service.run_response("session-8", "帮我整理会议并发 Teams")
+		second = await service.run_response("session-8", "我晚点再贴原文")
+
+		self.assertEqual(first.output, "要继续整理会议，我还需要会议纪要原文。")
+		self.assertEqual(second.output, "我还需要完整 transcript，当前信息还不够。")
+		pending = store.get("session-8")
+		self.assertIsNotNone(pending)
+		assert pending is not None
+		self.assertEqual(pending.original_message, "帮我整理会议并发 Teams")
+		self.assertEqual(
+			pending.clarification.input_payload,
+			{
+				"meeting_title": "Weekly Sync",
+				"send_to_teams": True,
+			},
+		)

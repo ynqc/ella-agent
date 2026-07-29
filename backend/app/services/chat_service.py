@@ -227,7 +227,8 @@ class ChatService:
 		pending = self._workflow_clarification_store.get(session_id)
 		plan = await self._plan_next_action(session_id, message)
 		if isinstance(plan, WorkflowClarification):
-			self._workflow_clarification_store.set(session_id, plan, message)
+			original_message = pending.original_message if pending is not None else message
+			self._workflow_clarification_store.set(session_id, plan, original_message)
 			return self._build_clarification_result(
 				session_id=session_id,
 				message=message,
@@ -262,7 +263,8 @@ class ChatService:
 		pending = self._workflow_clarification_store.get(session_id)
 		plan = await self._plan_next_action(session_id, message)
 		if isinstance(plan, WorkflowClarification):
-			self._workflow_clarification_store.set(session_id, plan, message)
+			original_message = pending.original_message if pending is not None else message
+			self._workflow_clarification_store.set(session_id, plan, original_message)
 			yield self._build_clarification_result(
 				session_id=session_id,
 				message=message,

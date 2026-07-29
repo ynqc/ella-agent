@@ -85,6 +85,25 @@ class WorkflowPlanner:
 			"meeting": frozenset(MeetingWorkflowInput.model_fields.keys()),
 			"bug": frozenset(BugWorkflowInput.model_fields.keys()),
 		}
+		self._required_input_fields: dict[str, tuple[str, ...]] = {
+			"meeting": tuple(
+				name for name, field in MeetingWorkflowInput.model_fields.items() if field.is_required()
+			),
+			"bug": tuple(
+				name for name, field in BugWorkflowInput.model_fields.items() if field.is_required()
+			),
+		}
+		self._clarification_field_prompts: dict[str, dict[str, str]] = {
+			"meeting": {
+				"transcript": "会议 transcript 或会议纪要原文",
+				"meeting_title": "会议标题",
+				"channel": "要发送到的 Teams channel",
+			},
+			"bug": {
+				"bug_report": "bug report 的具体描述",
+				"issue_key": "Jira issue key，例如 BUG-123",
+			},
+		}
 
 	def _sanitize_input_payload(self, workflow_type: str | None, payload: dict[str, object]) -> dict[str, object]:
 		if workflow_type is None:
@@ -106,6 +125,43 @@ class WorkflowPlanner:
 			if isinstance(item, str) and item.strip() and (allowed_fields is None or item.strip() in allowed_fields)
 		]
 
+	@staticmethod
+	def _deduplicate_fields(fields: list[str]) -> list[str]:
+		seen: set[str] = set()
+		result: list[str] = []
+		for field_name in fields:
+			if field_name in seen:
+				continue
+			seen.add(field_name)
+			result.append(field_name)
+		return result
+
+	def _detect_missing_required_fields(self, workflow_type: str | None, payload: dict[str, object]) -> list[str]:
+		if workflow_type is None:
+			return []
+		required_fields = self._required_input_fields.get(workflow_type)
+		if required_fields is None:
+			return []
+		missing_fields: list[str] = []
+		for field_name in required_fields:
+			value = payload.get(field_name)
+			if value is None:
+				missing_fields.append(field_name)
+				continue
+			if isinstance(value, str) and not value.strip():
+				missing_fields.append(field_name)
+		return missing_fields
+
+	def _build_clarification_message(self, workflow_type: str, missing_fields: list[str]) -> str:
+		field_prompts = self._clarification_field_prompts.get(workflow_type, {})
+		prompt_parts = [field_prompts.get(field_name, field_name) for field_name in missing_fields]
+		if not prompt_parts:
+			return f"要继续执行 {workflow_type} workflow，我还需要补充一些信息。"
+		if len(prompt_parts) == 1:
+			return f"要继续执行 {workflow_type} workflow，我还需要{prompt_parts[0]}。"
+		joined_parts = "、".join(prompt_parts)
+		return f"要继续执行 {workflow_type} workflow，我还需要这些信息：{joined_parts}。"
+
 	def _parse_plan_payload(self, payload: dict[str, object]) -> WorkflowPlan | WorkflowClarification | None:
 		route = optional_text(payload.get("route"))
 		if route == "chat":
@@ -117,17 +173,22 @@ class WorkflowPlanner:
 		if not isinstance(input_payload, dict):
 			raise ValueError("WorkflowPlanner input must be a JSON object.")
 		input_payload = self._sanitize_input_payload(workflow_type, input_payload)
+		inferred_missing_fields = self._detect_missing_required_fields(workflow_type, input_payload)
 		if route == "clarify":
 			missing_fields = payload.get("missing_fields")
-			clarification_message = optional_text(payload.get("clarification_message"))
-			if not workflow_type or not clarification_message:
+			if not workflow_type:
 				return None
 			if not isinstance(missing_fields, list):
 				raise ValueError("WorkflowPlanner missing_fields must be a JSON array.")
+			merged_missing_fields = self._deduplicate_fields(
+				self._sanitize_missing_fields(workflow_type, missing_fields) + inferred_missing_fields
+			)
+			if not merged_missing_fields:
+				return None
 			return WorkflowClarification(
 				workflow_type=workflow_type,
-				missing_fields=self._sanitize_missing_fields(workflow_type, missing_fields),
-				message=clarification_message,
+				missing_fields=merged_missing_fields,
+				message=self._build_clarification_message(workflow_type, merged_missing_fields),
 				input_payload=input_payload,
 				rationale=optional_text(payload.get("rationale")),
 			)
@@ -135,6 +196,14 @@ class WorkflowPlanner:
 			return None
 		if not workflow_type:
 			return None
+		if inferred_missing_fields:
+			return WorkflowClarification(
+				workflow_type=workflow_type,
+				missing_fields=inferred_missing_fields,
+				message=self._build_clarification_message(workflow_type, inferred_missing_fields),
+				input_payload=input_payload,
+				rationale=optional_text(payload.get("rationale")),
+			)
 
 		return WorkflowPlan(
 			workflow_type=workflow_type,
