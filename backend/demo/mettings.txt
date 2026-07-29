@@ -1,0 +1,133 @@
+
+Transcript. Use arrow keys to navigate between transcript entries. Select an entry to navigate the media to the time of the entry.
+
+
+Search
+
+AI-generated content may be incorrect
+
+Sowmya Srinivasan started transcription
+SS
+
+Sowmya Srinivasan
+0 minutes 8 seconds0:08
+Sowmya Srinivasan 0 minutes 8 seconds
+All right, thank you for joining. This is to, I'm going to go over some of the design details of.
+Sowmya Srinivasan 0 minutes 18 seconds
+The downstream task skipping feature.
+Sowmya Srinivasan 0 minutes 23 seconds
+Let me pull up the.
+Sowmya Srinivasan 0 minutes 27 seconds
+Ahh.
+Sowmya Srinivasan 0 minutes 34 seconds
+What's going on? Oh my god, my VPN. Sorry, one second.
+
+Yoyo Fang
+0 minutes 41 seconds0:41
+Yoyo Fang 0 minutes 41 seconds
+Sure, take your time.
+SS
+
+Sowmya Srinivasan
+0 minutes 46 seconds0:46
+Sowmya Srinivasan 0 minutes 46 seconds
+I don't understand why this thing keeps disconnecting like every time it sleeps.
+
+Yoyo Fang
+0 minutes 52 seconds0:52
+Yoyo Fang 0 minutes 52 seconds
+Yeah, my my opinion doesn't work well at all.
+SS
+
+Sowmya Srinivasan
+0 minutes 57 seconds0:57
+Sowmya Srinivasan 0 minutes 57 seconds
+Oh, man.
+Sowmya Srinivasan 1 minute
+All right.
+Sowmya Srinivasan 1 minute 4 seconds
+Okay, great.
+Sowmya Srinivasan 1 minute 9 seconds
+Cool, so this feature is around.
+Sowmya Srinivasan 1 minute 15 seconds
+skipping downstream tasks. So I don't know, are you guys familiar with the did data change, like task skipping that we have right now?
+
+Yoyo Fang
+1 minute 29 seconds1:29
+Yoyo Fang 1 minute 29 seconds
+Not really.
+SS
+
+Sowmya Srinivasan
+1 minute 31 seconds1:31
+Sowmya Srinivasan 1 minute 31 seconds
+Okay, so...
+Sowmya Srinivasan 1 minute 33 seconds
+Let me go over that in addition to this then. Basically right now we have some workflows that kind of show you that like that kind of work in such a way that you can skip some downstream tasks if the upstream tasks like things that it's not necessary to run it and the specific use case that we kind of had.
+Sowmya Srinivasan 1 minute 54 seconds
+we have it hard-coded right now is did data change, which is basically it takes the silver task, does a calculation on the table before and after it writes to like the silver table. So for example, like tax lot silver.
+Sowmya Srinivasan 2 minutes 15 seconds
+Um...
+Sowmya Srinivasan 2 minutes 16 seconds
+you can say that like, oh, before we merge like whatever we're doing the tax slot table, did anything change? So did we actually have, were there any updates that actually changed the tax slot silver table? If so, then run everything as usual.
+Sowmya Srinivasan 2 minutes 36 seconds
+If not, then you can skip tax slot service potentially. Now, in this case, tax slot service doesn't just depend on tax slot silver. It also depends on like a bunch of other stuff like this, what is it, this?
+Sowmya Srinivasan 2 minutes 55 seconds
+Portfolio service silver, market factors, sorry, portfolio service silver, investment silver, service silver, and all of these. So.
+Sowmya Srinivasan 3 minutes 4 seconds
+In this case, it will not skip. But if you notice, for example, strategy service silver has skipped. And this is because strategy silver saw that like there was no change that went into the strategy silver table. So that means that you can skip strategy service. And if there's multiple tables that it's writing to, then it'll just figure out if any of them had a change and if even one of them had a change.
+Sowmya Srinivasan 3 minutes 26 seconds
+then it'll run as usual. But if all of them did not see any changes, then the corresponding service silver will be marked as like available to skip.
+Sowmya Srinivasan 3 minutes 38 seconds
+Does that make sense?
+
+Yoyo Fang
+3 minutes 42 seconds3:42
+Yoyo Fang 3 minutes 42 seconds
+Yes.
+SS
+
+Sowmya Srinivasan
+3 minutes 44 seconds3:44
+Sowmya Srinivasan 3 minutes 44 seconds
+Okay, so this is kind of hard-coded right now. We just have some...
+Sowmya Srinivasan 3 minutes 51 seconds
+We have some, you know what, I can actually show you.
+Sowmya Srinivasan 4 minutes 1 second
+some of the changes that are in here.
+Sowmya Srinivasan 4 minutes 5 seconds
+So right now you can see that in like, for example, in a Python type task, we have some, we have some logic around like, oh, are you, we write these, so the.
+Sowmya Srinivasan 4 minutes 18 seconds
+Spark task or DBT task will write to Minh IO a file that basically is like, you know, under this file path, tenant ID, correlation ID, DAG ID, task name, and did data change.json. And it'll basically just have a JSON that says did data change true or false.
+Sowmya Srinivasan 4 minutes 39 seconds
+If true, then it runs as usual. If false, then potentially it can actually skip. So what this part does is it just checks for all the upstreams of this task. Did any of them write, did data change, and does it say data did not change?
+Sowmya Srinivasan 4 minutes 57 seconds
+One of them said, like, if one of them said...
+Sowmya Srinivasan 5 minutes 2 seconds
+Yes, data did change, then it runs as usual. But if all of them said that it's false, then...
+Sowmya Srinivasan 5 minutes 10 seconds
+it will skip this task. So right here is where this happens. So basically it'll check if all the data changed and then it will write to Minh IO that this task itself changed. This is in the event of like a silver service task where like we're getting ready to skip it completely, but like there's other service tasks that depend on it.
+Sowmya Srinivasan 5 minutes 33 seconds
+Then we want the service task, like for example, investment service silver, we want that task to be able to write to Minh IO that like, hey, I did skip and then when something even further downstream like tax lot service.
+Sowmya Srinivasan 5 minutes 46 seconds
+needs to check, then it can say like, okay, tax lot silver wrote to Minh IO that did data change false. Investment service wrote to Minh IO that did data change false. Portfolio service wrote to Minh IO did data change false. All of my direct upstream tasks have written did data change false. So that means that I can skip.
+Sowmya Srinivasan 6 minutes 6 seconds
+So before it skips, it'll always write to MinIO, did data change false. This is a bit of a hacky kind of hard code. And then it'll raise this airflow skip exception.
+Sowmya Srinivasan 6 minutes 16 seconds
+So that's kind of how did data change works right now. In addition to all of this, of course, in the DAG template, in the ETL script, they do the, is where like the actual like determining of the data change happens. Like tax slot silver will be able to say like, oh, actually this PR has it.
+Sowmya Srinivasan 6 minutes 36 seconds
+So like, you know, before the tax slot, before tax slot merge happens, it'll do like, you know, get the CDC start time and figure out that, figure out like what the table looks like at this time and then.
+Sowmya Srinivasan 6 minutes 50 seconds
+It will.
+Sowmya Srinivasan 6 minutes 54 seconds
+Like after this, it'll do, it'll check if data changed, and then if data did not change, then it will write this parameter to Minh IO that did data change false.
+Sowmya Srinivasan 7 minutes 6 seconds
+So.
+Sowmya Srinivasan 7 minutes 8 seconds
+Based on that, that's this is kind of the hacky hard-coded way that it's been like for the last like year and a half. Now we're coming upon some additional use cases for this, like maybe not just like the data change, but you know, maybe there's some specific things within the ETL script that we might need to.
+
+{
+  "transcript": "# Downstream Task Skipping Design Meeting Transcript (Formatted)\n\n**Sowmya Srinivasan**\n\nAll right, thank you for joining.\n\nI'm going to go over some of the design details of the **Downstream Task Skipping** feature.\n\nLet me pull up the...\n\nAh...\n\nWhat's going on? Oh my god, my VPN. Sorry, one second.\n\n---\n\n**Yoyo Fang**\n\nSure, take your time.\n\n---\n\n**Sowmya Srinivasan**\n\nI don't understand why this thing keeps disconnecting every time it sleeps.\n\n---\n\n**Yoyo Fang**\n\nYeah, my VPN doesn't work well at all.\n\n---\n\n**Sowmya Srinivasan**\n\nOh, man.\n\nAll right.\n\nOkay, great.\n\nCool.\n\nSo this feature is around **skipping downstream tasks**.\n\nI don't know—are you guys familiar with the **Did Data Change** task skipping mechanism that we have right now?\n\n---\n\n**Yoyo Fang**\n\nNot really.\n\n---\n\n**Sowmya Srinivasan**\n\nOkay, so let me go over that first, in addition to this.\n\nBasically, right now we have some workflows that work in such a way that you can skip some downstream tasks if the upstream tasks determine that it's not necessary to run them.\n\nThe specific use case that we currently have is **Did Data Change**.\n\nIt's basically where a Silver task performs a calculation on the table before and after it writes to the Silver table.\n\nFor example, take **Tax Lot Silver**.\n\nYou can ask:\n\n> Before we merge into the Tax Lot Silver table, did anything actually change?\n\nIf there were updates that changed the Tax Lot Silver table, then everything runs as usual.\n\nIf nothing changed, then you can potentially skip **Tax Lot Service**.\n\nNow, in this case, Tax Lot Service doesn't just depend on Tax Lot Silver.\n\nIt also depends on a bunch of other things, such as:\n\n- Portfolio Service Silver\n- Investment Silver\n- Service Silver\n- and others.\n\nSo in this particular example, it **will not skip**.\n\nHowever, if you notice, **Strategy Service Silver** has been skipped.\n\nThat's because **Strategy Silver** determined that there were no changes written into the Strategy Silver table.\n\nThat means Strategy Service can safely be skipped.\n\nIf a task writes to multiple tables, it checks whether **any** table changed.\n\n- If even one table changed, the task runs normally.\n- If all tables had no changes, the corresponding Service Silver task becomes eligible to be skipped.\n\nDoes that make sense?\n\n---\n\n**Yoyo Fang**\n\nYes.\n\n---\n\n**Sowmya Srinivasan**\n\nOkay.\n\nSo this is kind of hard-coded right now.\n\nActually, I can show you some of the implementation.\n\nRight now, for example, in a Python task, we have logic where the Spark task or DBT task writes a file into **MinIO**.\n\nFile path:\n\n```text\ntenant_id/\ncorrelation_id/\ndag_id/\ntask_name/\ndid_data_change.json\n```\n\nContent:\n\n```json\n{\n  \"did_data_change\": true\n}\n```\n\nor\n\n```json\n{\n  \"did_data_change\": false\n}\n```\n\nIf it's **true**, everything runs normally.\n\nIf it's **false**, the task may be skipped.\n\nThe task checks all upstream tasks.\n\nIf **any** upstream reports data changed, it runs.\n\nIf **all** upstreams report no data change, it skips.\n\nBefore skipping, it always writes:\n\n```json\n{\n  \"did_data_change\": false\n}\n```\n\nto MinIO.\n\nThen it raises an **AirflowSkipException**.\n\nThat's basically how **Did Data Change** works today.\n\nThe actual comparison logic lives inside the DAG template / ETL script / DBT task / Spark task.\n\nFor example, Tax Lot Silver:\n\n1. Capture CDC start time.\n2. Read table before merge.\n3. Perform merge.\n4. Compare before and after.\n5. Write `did_data_change.json`.\n\nThis has been the hard-coded implementation for about 1.5 years.\n\nNow we're expanding beyond **Did Data Change** so other ETL conditions can also trigger downstream task skipping.",
+  "meeting_title": "Downstream Task Skipping Design",
+  "send_to_teams": false
+}

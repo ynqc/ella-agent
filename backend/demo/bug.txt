@@ -1,0 +1,6 @@
+{
+  "session_id": "bug-demo-001",
+  "issue_key": "ITL-999",
+  "post_to_jira": true,
+  "bug_report": "Problem statement: the current downstream task skipping mechanism is too hard-coded and difficult to extend. Existing behavior: Silver tasks write did_data_change.json into MinIO under tenant_id/correlation_id/dag_id/task_name/did_data_change.json. Downstream tasks inspect all upstream flags. If any upstream changed data, the task runs. If all upstreams report no data change, the downstream task writes did_data_change=false and raises AirflowSkipException to skip. Comparison logic currently lives inside DAG templates, ETL scripts, DBT tasks, and Spark tasks. Example: Tax Lot Silver captures CDC start time, reads the table before merge, performs the merge, compares before and after, then writes did_data_change.json. Current limitation: this implementation has been hard-coded for about 1.5 years and only supports Did Data Change. Desired change: expand the mechanism so other ETL-driven conditions can also trigger downstream task skipping. Risks: duplicated hard-coded logic across components, unclear generalization model, and possible difficulty preserving current skip semantics when multiple upstream dependencies exist."
+}

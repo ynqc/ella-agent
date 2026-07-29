@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1220" viewBox="0 0 1680 1220" role="img" aria-labelledby="title desc">
+  <title id="title">Ella Agent 请求时序图</title>
+  <desc id="desc">展示前端一次请求进入后端后，在 ChatService、WorkflowPlanner、ChatRuntime、WorkflowRuntime 中的主要时序。</desc>
+  <defs>
+    <style>
+      .bg { fill: #f6f3eb; }
+      .title { font: 700 30px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #1f2933; }
+      .subtitle { font: 500 16px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #52606d; }
+      .lane-title { font: 700 16px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #243b53; }
+      .lane-sub { font: 500 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #52606d; }
+      .note-title { font: 700 15px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #243b53; }
+      .text { font: 500 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #334e68; }
+      .small { font: 500 12px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #5d6b7a; }
+      .lane-box { fill: #fffdf8; stroke: #c7b892; stroke-width: 2; rx: 14; ry: 14; }
+      .front { fill: #fff; stroke: #4b5563; stroke-width: 2; rx: 14; ry: 14; }
+      .chat { fill: #eef8f1; stroke: #3f7b56; stroke-width: 2; rx: 14; ry: 14; }
+      .clarify { fill: #fff2f0; stroke: #b44c43; stroke-width: 2; rx: 14; ry: 14; }
+      .workflow { fill: #eef5ff; stroke: #3f6fa8; stroke-width: 2; rx: 14; ry: 14; }
+      .alt { fill: #fffdf7; stroke: #b8a47c; stroke-width: 2; rx: 18; ry: 18; }
+      .line { stroke: #c0c7d1; stroke-width: 2; stroke-dasharray: 8 8; }
+      .arrow { stroke: #52606d; stroke-width: 2.5; fill: none; marker-end: url(#arrowhead); }
+      .return { stroke: #7b8794; stroke-width: 2.5; fill: none; stroke-dasharray: 7 7; marker-end: url(#arrowhead); }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#52606d"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1680" height="1220"/>
+  <text class="title" x="50" y="56">Ella Agent 单次请求时序图</text>
+  <text class="subtitle" x="50" y="84">从前端一次输入开始，展示路由、planner、clarification、chat runtime 和 workflow runtime 的调用顺序。</text>
+
+  <rect class="lane-box" x="40" y="110" width="180" height="90"/>
+  <text class="lane-title" x="95" y="145">Frontend</text>
+  <text class="lane-sub" x="72" y="168">页面 / 调用方</text>
+
+  <rect class="lane-box" x="260" y="110" width="180" height="90"/>
+  <text class="lane-title" x="307" y="145">API Router</text>
+  <text class="lane-sub" x="289" y="168">/api/chat</text>
+
+  <rect class="lane-box" x="480" y="110" width="180" height="90"/>
+  <text class="lane-title" x="516" y="145">ChatService</text>
+  <text class="lane-sub" x="528" y="168">统一入口</text>
+
+  <rect class="lane-box" x="700" y="110" width="180" height="90"/>
+  <text class="lane-title" x="717" y="145">Clarification</text>
+  <text class="lane-sub" x="733" y="168">Store</text>
+
+  <rect class="lane-box" x="920" y="110" width="180" height="90"/>
+  <text class="lane-title" x="950" y="145">Planner</text>
+  <text class="lane-sub" x="946" y="168">LLM route</text>
+
+  <rect class="lane-box" x="1140" y="110" width="180" height="90"/>
+  <text class="lane-title" x="1166" y="145">Chat Runtime</text>
+  <text class="lane-sub" x="1162" y="168">ChatAgent / AgentRuntime</text>
+
+  <rect class="lane-box" x="1360" y="110" width="220" height="90"/>
+  <text class="lane-title" x="1380" y="145">Workflow Runtime</text>
+  <text class="lane-sub" x="1386" y="168">WorkflowService / Registry</text>
+
+  <line class="line" x1="130" y1="220" x2="130" y2="1150"/>
+  <line class="line" x1="350" y1="220" x2="350" y2="1150"/>
+  <line class="line" x1="570" y1="220" x2="570" y2="1150"/>
+  <line class="line" x1="790" y1="220" x2="790" y2="1150"/>
+  <line class="line" x1="1010" y1="220" x2="1010" y2="1150"/>
+  <line class="line" x1="1230" y1="220" x2="1230" y2="1150"/>
+  <line class="line" x1="1470" y1="220" x2="1470" y2="1150"/>
+
+  <path class="arrow" d="M 130 250 L 350 250"/>
+  <text class="text" x="165" y="240">1. POST /api/chat(message, session_id?)</text>
+
+  <path class="arrow" d="M 350 300 L 570 300"/>
+  <text class="text" x="386" y="290">2. 调用 ChatService.stream_response / run_response</text>
+
+  <path class="arrow" d="M 570 350 L 790 350"/>
+  <text class="text" x="616" y="340">3. 读取 pending clarification</text>
+
+  <rect class="alt" x="70" y="390" width="1490" height="220"/>
+  <text class="note-title" x="90" y="420">分支 A: 当前 session 有 pending clarification</text>
+
+  <path class="arrow" d="M 790 455 L 570 455"/>
+  <text class="text" x="628" y="445">4A. 返回 pending 状态</text>
+
+  <path class="arrow" d="M 570 505 L 1010 505"/>
+  <text class="text" x="707" y="495">5A. resolve_clarification(original_message, known_input, followup)</text>
+
+  <path class="return" d="M 1010 555 L 570 555"/>
+  <text class="text" x="736" y="545">6A. 返回 workflow / clarify</text>
+
+  <path class="arrow" d="M 570 590 L 790 590"/>
+  <text class="text" x="605" y="580">7A. 若仍缺字段: 更新 clarification store</text>
+
+  <rect class="clarify" x="1110" y="430" width="370" height="130"/>
+  <text class="note-title" x="1135" y="460">Clarification 语义</text>
+  <text class="text" x="1135" y="490">保存 missing_fields + known_input</text>
+  <text class="text" x="1135" y="515">下轮用户只补新字段即可</text>
+  <text class="text" x="1135" y="540">ChatService 在继续执行前做 merge</text>
+
+  <rect class="alt" x="70" y="640" width="1490" height="220"/>
+  <text class="note-title" x="90" y="670">分支 B: 当前 session 没有 pending clarification</text>
+
+  <path class="arrow" d="M 790 705 L 570 705"/>
+  <text class="text" x="618" y="695">4B. 无 pending</text>
+
+  <path class="arrow" d="M 570 755 L 1010 755"/>
+  <text class="text" x="796" y="745">5B. planner.plan(message)</text>
+
+  <path class="return" d="M 1010 805 L 570 805"/>
+  <text class="text" x="750" y="795">6B. 返回 chat / clarify / workflow</text>
+
+  <rect class="alt" x="70" y="890" width="1490" height="250"/>
+  <text class="note-title" x="90" y="920">分支 C: ChatService 根据 planner 结果执行</text>
+
+  <path class="arrow" d="M 570 970 L 1230 970"/>
+  <text class="text" x="775" y="960">7C-1. route=chat -> 进入 ChatAgent / AgentRuntime</text>
+
+  <rect class="chat" x="1120" y="990" width="320" height="110"/>
+  <text class="note-title" x="1145" y="1020">Chat Runtime 内部</text>
+  <text class="text" x="1145" y="1048">memory capture -> prompt build</text>
+  <text class="text" x="1145" y="1072">LLM planning -> 可选 tool calls -> final answer</text>
+
+  <path class="arrow" d="M 570 1015 L 790 1015"/>
+  <text class="text" x="615" y="1005">7C-2. route=clarify -> 保存 clarification 并返回追问</text>
+
+  <path class="arrow" d="M 570 1060 L 1470 1060"/>
+  <text class="text" x="895" y="1050">7C-3. route=workflow -> WorkflowService.run_workflow(...)</text>
+
+  <rect class="workflow" x="1320" y="905" width="220" height="130"/>
+  <text class="note-title" x="1348" y="935">Workflow Runtime 内部</text>
+  <text class="text" x="1348" y="963">Registry 分发到 meeting / bug</text>
+  <text class="text" x="1348" y="988">先查 artifact cache</text>
+  <text class="text" x="1348" y="1013">命中则复用内容，按请求重放 Teams/Jira</text>
+
+  <path class="return" d="M 1230 1120 L 350 1120"/>
+  <text class="text" x="680" y="1110">8. 返回流式文本或 debug payload 给前端</text>
+
+  <path class="return" d="M 350 1160 L 130 1160"/>
+  <text class="text" x="170" y="1150">9. Frontend 展示结果；若有追问则进入下一轮</text>
+</svg>
