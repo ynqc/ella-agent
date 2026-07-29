@@ -1,0 +1,140 @@
+.app-shell {
+  display: flex;
+  min-height: 100%;
+  flex: 1;
+  background:
+    radial-gradient(circle at top left, rgba(245, 158, 11, 0.14), transparent 24%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.03), transparent 30%);
+}
+
+.sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding: 36px 24px;
+  box-sizing: border-box;
+  border-right: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 92%, #f8fafc 8%);
+}
+
+.brand-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #c2410c;
+}
+
+.brand-block h1 {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.brand-copy {
+  margin: 0;
+  max-width: 22rem;
+  color: var(--text);
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  color: var(--text-h);
+  text-decoration: none;
+  font-weight: 600;
+  background: transparent;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.nav-link:hover {
+  background: rgba(194, 65, 12, 0.08);
+  border-color: rgba(194, 65, 12, 0.18);
+  transform: translateX(2px);
+}
+
+.nav-link-active {
+  background: linear-gradient(135deg, #f59e0b, #ea580c);
+  color: #fff;
+  box-shadow: 0 14px 30px -20px rgba(234, 88, 12, 0.9);
+}
+
+.content-shell {
+  flex: 1;
+  display: flex;
+  padding: 28px;
+  box-sizing: border-box;
+}
+
+.content-card {
+  width: 100%;
+  min-height: 100%;
+  padding: 32px;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--bg) 96%, #ffffff 4%);
+  box-shadow: 0 24px 60px -40px rgba(15, 23, 42, 0.35);
+  text-align: left;
+}
+
+@media (max-width: 860px) {
+  .app-shell {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    padding: 24px 20px 18px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .brand-block h1 {
+    font-size: 28px;
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .nav-link {
+    flex: 1 1 140px;
+    justify-content: center;
+  }
+
+  .content-shell {
+    padding: 20px;
+  }
+
+  .content-card {
+    padding: 24px 20px;
+    border-radius: 20px;
+  }
+}
