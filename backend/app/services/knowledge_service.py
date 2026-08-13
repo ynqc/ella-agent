@@ -39,8 +39,10 @@ class KnowledgeService:
         }
 
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                logger.info(f"FastGPT request: URL={url}, chatId={chat_id}")
                 response = await client.post(url, json=payload, headers=headers)
+                logger.info(f"FastGPT response: status={response.status_code}, body={response.text[:500]}")
                 response.raise_for_status()
                 data = response.json()
 
@@ -52,6 +54,9 @@ class KnowledgeService:
 
                 return ""
 
+        except httpx.HTTPStatusError as exc:
+            logger.error(f"FastGPT HTTP error: status={exc.response.status_code}, body={exc.response.text[:500]}")
+            return ""
         except Exception as exc:
-            logger.error(f"Error retrieving knowledge from FastGPT: {exc}")
+            logger.error(f"FastGPT unexpected error: {type(exc).__name__}: {exc}")
             return ""

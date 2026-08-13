@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 import './Chat.css'
 
@@ -7,6 +9,13 @@ type Message = {
   id: string
   role: 'assistant' | 'user'
   content: string
+  phases?: PhaseEvent[]
+}
+
+type PhaseEvent = {
+  phase: string
+  message: string
+  tools?: string[]
 }
 
 type ChatThread = {
@@ -61,10 +70,20 @@ function sanitizeMessage(value: unknown): Message | null {
     return null
   }
 
+  const phases: PhaseEvent[] = []
+  if (Array.isArray(candidate.phases)) {
+    for (const p of candidate.phases) {
+      if (p && typeof p === 'object' && typeof p.message === 'string') {
+        phases.push({ phase: p.phase || '', message: p.message, tools: p.tools })
+      }
+    }
+  }
+
   return {
     id: candidate.id,
     role: candidate.role,
     content: typeof candidate.content === 'string' ? candidate.content : '',
+    phases: phases.length > 0 ? phases : undefined,
   }
 }
 
@@ -339,6 +358,7 @@ export default function Chat() {
 
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
+      const EVENT_PREFIX = '§event:'
 
       while (true) {
         const { value, done } = await reader.read()
@@ -348,15 +368,41 @@ export default function Chat() {
         }
 
         const chunk = decoder.decode(value, { stream: true })
+        const lines = chunk.split('\n')
+        let textParts: string[] = []
 
-        updateThread(threadId, (thread) => ({
-          ...thread,
-          messages: thread.messages.map((item) =>
-            item.id === assistantId
-              ? { ...item, content: `${item.content}${chunk}` }
-              : item,
-          ),
-        }))
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]
+          if (line.startsWith(EVENT_PREFIX)) {
+            try {
+              const event = JSON.parse(line.slice(EVENT_PREFIX.length)) as PhaseEvent
+              updateThread(threadId, (thread) => ({
+                ...thread,
+                messages: thread.messages.map((item) =>
+                  item.id === assistantId
+                    ? { ...item, phases: [...(item.phases || []), event] }
+                    : item,
+                ),
+              }))
+            } catch {
+              // ignore malformed event
+            }
+          } else {
+            textParts.push(line)
+          }
+        }
+
+        const textContent = textParts.join('\n')
+        if (textContent) {
+          updateThread(threadId, (thread) => ({
+            ...thread,
+            messages: thread.messages.map((item) =>
+              item.id === assistantId
+                ? { ...item, content: `${item.content}${textContent}` }
+                : item,
+            ),
+          }))
+        }
       }
     } catch (streamError) {
       const messageText = streamError instanceof Error ? streamError.message : 'Unknown chat error.'
@@ -428,7 +474,34 @@ export default function Chat() {
             >
               <div className="message-bubble">
                 <p className="message-role">{message.role === 'user' ? 'You' : 'Ella'}</p>
-                <p className="message-content">{message.content || (isStreaming ? '...' : '')}</p>
+                {message.role === 'user' ? (
+                  <p className="message-content">{message.content || (isStreaming ? '...' : '')}</p>
+                ) : (
+                  <>
+                    {message.phases && message.phases.length > 0 && (
+                      <div className="phase-pipeline">
+                        {message.phases.map((phase, idx) => (
+                          <div
+                            key={idx}
+                            className={`phase-step ${idx === message.phases!.length - 1 && isStreaming && !message.content ? 'phase-step-active' : 'phase-step-done'}`}
+                          >
+                            <span className="phase-dot" />
+                            <span className="phase-label">{phase.message}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="message-content message-markdown">
+                      {message.content ? (
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {message.content}
+                        </ReactMarkdown>
+                      ) : isStreaming ? (
+                        <span className="typing-indicator"><span /><span /><span /></span>
+                      ) : null}
+                    </div>
+                  </>
+                )}
               </div>
             </article>
           ))}

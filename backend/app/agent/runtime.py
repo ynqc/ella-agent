@@ -195,24 +195,55 @@ class AgentRuntime:
 			state.final_text = output
 		return AgentRunResult(state=state, output=output)
 
+	def _progress_event(self, phase: str, message: str, **extra: object) -> str:
+		payload = {"type": "phase", "phase": phase, "message": message, **extra}
+		return f"§event:{json.dumps(payload, ensure_ascii=False)}\n"
+
 	async def stream(self, state: AgentState) -> AsyncIterator[str]:
 		self._set_phase(state, AgentPhase.RECEIVED)
 		self._logger.info("chat request received")
 		self._memory_manager.add_user_message(state.session_id, state.user_message)
 
 		self._set_phase(state, AgentPhase.MEMORY_CAPTURE)
+		yield self._progress_event("memory_capture", "正在提取记忆...")
 		state = await self._capture_user_memory(state)
+		if state.extracted_memories:
+			yield self._progress_event("memory_capture", f"提取到 {len(state.extracted_memories)} 条记忆", count=len(state.extracted_memories))
+		else:
+			yield self._progress_event("memory_capture", "未发现新记忆")
 
 		self._set_phase(state, AgentPhase.KNOWLEDGE_RETRIEVAL)
+		yield self._progress_event("knowledge_retrieval", "正在检索知识库...")
 		if self._knowledge_service:
 			self._logger.info("Retrieving knowledge from FastGPT...")
-			state.knowledge_context = await self._knowledge_service.retrieve_knowledge(state.user_message, session_id=state.session_id)
+			try:
+				state.knowledge_context = await self._knowledge_service.retrieve_knowledge(state.user_message, session_id=state.session_id)
+			except Exception as exc:
+				self._logger.warning("FastGPT knowledge retrieval failed, continuing without RAG: %s", exc)
+				state.knowledge_context = ""
 			self._logger.info(f"Retrieved {len(state.knowledge_context or '')} chars of knowledge")
+			if state.knowledge_context:
+				yield self._progress_event("knowledge_retrieval", f"检索到 {len(state.knowledge_context)} 字符的相关知识", chars=len(state.knowledge_context))
+			else:
+				yield self._progress_event("knowledge_retrieval", "未检索到相关知识")
+		else:
+			yield self._progress_event("knowledge_retrieval", "知识库未配置，跳过")
 
 		self._set_phase(state, AgentPhase.PROMPT_BUILD)
+		yield self._progress_event("prompt_build", "正在组装上下文...")
 		state = self._build_effective_message(state)
+		context_parts = []
+		if state.memory_context:
+			context_parts.append("记忆")
+		if state.knowledge_context:
+			context_parts.append("知识库")
+		if context_parts:
+			yield self._progress_event("prompt_build", f"已注入: {' + '.join(context_parts)}", sources=context_parts)
+		else:
+			yield self._progress_event("prompt_build", "无额外上下文")
 
 		self._set_phase(state, AgentPhase.PLANNING)
+		yield self._progress_event("planning", "正在规划回复...")
 		try:
 			state = await self._plan_response(state)
 		except ValueError as exc:
@@ -225,7 +256,9 @@ class AgentRuntime:
 			return
 
 		if not state.tool_calls:
+			yield self._progress_event("planning", "直接回复，无需工具调用")
 			self._set_phase(state, AgentPhase.RESPONDING)
+			yield self._progress_event("responding", "正在生成回答...")
 			self._logger.info("llm answered without tool call")
 			text = self._llm_client.response_text(state.planning_response)
 			if text:
@@ -242,7 +275,10 @@ class AgentRuntime:
 		)
 
 		self._set_phase(state, AgentPhase.TOOL_EXECUTION)
+		tool_names = [tc["name"] for tc in state.tool_calls]
+		yield self._progress_event("tool_execution", f"正在执行工具: {', '.join(tool_names)}", tools=tool_names)
 		state = self._run_tool_calls(state)
+		yield self._progress_event("tool_execution", f"工具执行完成，获得 {len(state.tool_results)} 个结果", result_count=len(state.tool_results))
 		self._logger.info(
 			"tool execution results: %s",
 			json.dumps(state.tool_results, ensure_ascii=False),
@@ -256,6 +292,7 @@ class AgentRuntime:
 			tool_results=state.tool_results,
 		)
 		self._set_phase(state, AgentPhase.RESPONDING)
+		yield self._progress_event("responding", "正在生成回答...")
 		async for text in self._llm_client.stream_final_answer(
 			state.llm_with_tools,
 			state.effective_message or state.user_message,

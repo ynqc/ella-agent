@@ -30,6 +30,17 @@ class ChatService:
 	def _now(self) -> datetime:
 		return datetime.now(UTC)
 
+	def _progress_event(self, phase: str, message: str, **extra: object) -> str:
+		payload = {"type": "phase", "phase": phase, "message": message, **extra}
+		return f"§event:{json.dumps(payload, ensure_ascii=False)}\n"
+
+	def _get_workflow_step_names(self, workflow_type: str) -> list[str]:
+		step_map = {
+			"meeting": ["summary", "action_items", "memo", "save_memory", "send_teams"],
+			"bug": ["analysis", "jira_comment", "post_jira_comment"],
+		}
+		return step_map.get(workflow_type, [])
+
 	def _format_workflow_output(self, plan: WorkflowPlan, result: WorkflowRunResult) -> str:
 		cache_hit = False if result.cache is None else bool(result.cache.get("hit", False))
 		cache_text = "命中" if cache_hit else "未命中"
@@ -259,10 +270,25 @@ class ChatService:
 			)
 		return await self._agent.run(session_id, message)
 
+	def _progress_event(self, phase: str, message: str, **extra: object) -> str:
+		payload = {"type": "phase", "phase": phase, "message": message, **extra}
+		return f"§event:{json.dumps(payload, ensure_ascii=False)}\n"
+
+	def _get_workflow_step_names(self, workflow_type: str) -> list[str]:
+		step_map = {
+			"meeting": ["summary", "action_items", "memo", "save_memory", "send_teams"],
+			"bug": ["analysis", "jira_comment", "post_jira_comment"],
+		}
+		return step_map.get(workflow_type, [])
+
 	async def stream_response(self, session_id: str, message: str) -> AsyncIterator[str]:
 		pending = self._workflow_clarification_store.get(session_id)
+
+		yield self._progress_event("planning", "正在分析意图...")
 		plan = await self._plan_next_action(session_id, message)
+
 		if isinstance(plan, WorkflowClarification):
+			yield self._progress_event("planning", f"需要补充信息: {', '.join(plan.missing_fields)}", missing=plan.missing_fields)
 			original_message = pending.original_message if pending is not None else message
 			self._workflow_clarification_store.set(session_id, plan, original_message)
 			yield self._build_clarification_result(
@@ -271,10 +297,13 @@ class ChatService:
 				clarification=plan,
 			).output
 			return
+
 		if isinstance(plan, WorkflowPlan):
+			yield self._progress_event("planning", f"识别到 {plan.workflow_type} workflow", workflow_type=plan.workflow_type)
 			self._workflow_clarification_store.clear(session_id)
 			validation_errors = self._validate_workflow_plan(plan)
 			if validation_errors is not None:
+				yield self._progress_event("workflow", "输入校验失败")
 				yield self._build_workflow_validation_failure_result(
 					session_id=session_id,
 					message=message,
@@ -283,11 +312,32 @@ class ChatService:
 					pending_clarification=pending.to_dict() if pending is not None else None,
 				).output
 				return
+
+			yield self._progress_event("workflow", f"正在执行 {plan.workflow_type} workflow...")
+
+			# Get step names for progress reporting
+			step_names = self._get_workflow_step_names(plan.workflow_type)
+			if step_names:
+				yield self._progress_event("workflow", f"步骤: {' → '.join(step_names)}", steps=step_names)
+
 			workflow_result = await self._workflow_service.run_workflow(
 				plan.workflow_type,
 				session_id=session_id,
 				**plan.input_payload,
 			)
+
+			# Report each step result
+			for step in workflow_result.steps:
+				status_text = {"success": "✓", "failed": "✗", "skipped": "○"}.get(step.status.value, "?")
+				yield self._progress_event(
+					"workflow",
+					f"{status_text} {step.step_name} ({step.duration_ms:.0f}ms)",
+					step_name=step.step_name,
+					step_status=step.status.value,
+					duration_ms=step.duration_ms,
+				)
+
+			yield self._progress_event("responding", "正在生成回答...")
 			yield self._build_workflow_run_result(
 				session_id=session_id,
 				message=message,
@@ -296,5 +346,7 @@ class ChatService:
 				pending_clarification=pending.to_dict() if pending is not None else None,
 			).output
 			return
+
+		yield self._progress_event("planning", "普通对话，进入 chat 流程")
 		async for chunk in self._agent.stream_response(session_id, message):
 			yield chunk
