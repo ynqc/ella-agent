@@ -1,0 +1,200 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1400" font-family="system-ui, -apple-system, sans-serif" font-size="13">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#475569"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#3b82f6"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#10b981"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="1400" fill="#f8fafc" rx="8"/>
+
+  <!-- Title -->
+  <text x="450" y="40" text-anchor="middle" font-size="20" font-weight="bold" fill="#1e293b">Ella Agent — Chat 请求完整流程</text>
+  <text x="450" y="62" text-anchor="middle" font-size="12" fill="#64748b">从前端请求到最终输出的全链路</text>
+
+  <!-- ====== Frontend Layer ====== -->
+  <rect x="30" y="85" width="840" height="70" rx="6" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1"/>
+  <text x="50" y="105" font-size="11" fill="#3b82f6" font-weight="bold">FRONTEND</text>
+
+  <rect x="340" y="110" width="220" height="36" rx="6" fill="#ffffff" stroke="#93c5fd" stroke-width="1.5"/>
+  <text x="450" y="133" text-anchor="middle" font-size="13" fill="#1e40af">POST /api/chat</text>
+  <text x="450" y="146" text-anchor="middle" font-size="10" fill="#64748b">{session_id?, message}</text>
+
+  <!-- Arrow to API -->
+  <line x1="450" y1="155" x2="450" y2="185" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- ====== API Layer ====== -->
+  <rect x="30" y="185" width="840" height="90" rx="6" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1"/>
+  <text x="50" y="205" font-size="11" fill="#16a34a" font-weight="bold">API LAYER — chat.py</text>
+
+  <rect x="300" y="215" width="300" height="48" rx="6" fill="#ffffff" stroke="#86efac" stroke-width="1.5"/>
+  <text x="450" y="236" text-anchor="middle" font-size="12" fill="#166534">create_chat_completion()</text>
+  <text x="450" y="252" text-anchor="middle" font-size="10" fill="#64748b">session_id = payload.session_id or uuid4()</text>
+  <text x="450" y="263" text-anchor="middle" font-size="10" fill="#64748b">→ StreamingResponse(text_stream(...))</text>
+
+  <!-- Arrow to ChatService -->
+  <line x1="450" y1="275" x2="450" y2="305" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- ====== Service Layer ====== -->
+  <rect x="30" y="305" width="840" height="220" rx="6" fill="#fefce8" stroke="#fde68a" stroke-width="1"/>
+  <text x="50" y="325" font-size="11" fill="#ca8a04" font-weight="bold">SERVICE LAYER — ChatService</text>
+
+  <!-- Planner Decision -->
+  <polygon points="450,340 560,380 450,420 340,380" fill="#ffffff" stroke="#fbbf24" stroke-width="1.5"/>
+  <text x="450" y="376" text-anchor="middle" font-size="11" fill="#92400e">WorkflowPlanner</text>
+  <text x="450" y="390" text-anchor="middle" font-size="10" fill="#92400e">.plan(message)</text>
+
+  <!-- Three branches -->
+  <!-- Left: Clarification -->
+  <line x1="340" y1="380" x2="160" y2="380" stroke="#f59e0b" stroke-width="1.2"/>
+  <line x1="160" y1="380" x2="160" y2="470" stroke="#f59e0b" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <text x="230" y="370" font-size="10" fill="#92400e">clarify</text>
+
+  <rect x="80" y="470" width="160" height="40" rx="5" fill="#fef3c7" stroke="#fbbf24" stroke-width="1"/>
+  <text x="160" y="492" text-anchor="middle" font-size="11" fill="#92400e">返回追问消息</text>
+  <text x="160" y="505" text-anchor="middle" font-size="9" fill="#a16207">yield clarification.message</text>
+
+  <!-- Right: Workflow -->
+  <line x1="560" y1="380" x2="720" y2="380" stroke="#f59e0b" stroke-width="1.2"/>
+  <line x1="720" y1="380" x2="720" y2="470" stroke="#f59e0b" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <text x="625" y="370" font-size="10" fill="#92400e">workflow</text>
+
+  <rect x="630" y="470" width="180" height="40" rx="5" fill="#fef3c7" stroke="#fbbf24" stroke-width="1"/>
+  <text x="720" y="488" text-anchor="middle" font-size="11" fill="#92400e">WorkflowService</text>
+  <text x="720" y="502" text-anchor="middle" font-size="9" fill="#a16207">.run_workflow(type, ...)</text>
+
+  <!-- Center: Chat -->
+  <line x1="450" y1="420" x2="450" y2="545" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="462" y="440" font-size="10" fill="#475569">chat (None)</text>
+
+  <!-- ====== Agent Layer ====== -->
+  <rect x="30" y="545" width="840" height="60" rx="6" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1"/>
+  <text x="50" y="565" font-size="11" fill="#7c3aed" font-weight="bold">AGENT — ChatAgent</text>
+
+  <rect x="300" y="570" width="300" height="28" rx="5" fill="#ffffff" stroke="#c4b5fd" stroke-width="1.5"/>
+  <text x="450" y="589" text-anchor="middle" font-size="12" fill="#5b21b6">stream_response(session_id, message)</text>
+
+  <!-- Arrow to Runtime -->
+  <line x1="450" y1="605" x2="450" y2="635" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- ====== Runtime Pipeline ====== -->
+  <rect x="30" y="635" width="840" height="700" rx="6" fill="#fff1f2" stroke="#fecdd3" stroke-width="1"/>
+  <text x="50" y="658" font-size="11" fill="#e11d48" font-weight="bold">RUNTIME PIPELINE — AgentRuntime.stream()</text>
+
+  <!-- Phase 1: RECEIVED -->
+  <rect x="320" y="670" width="260" height="36" rx="5" fill="#ffffff" stroke="#fda4af" stroke-width="1.2"/>
+  <text x="340" y="685" font-size="9" fill="#be123c" font-weight="bold">①</text>
+  <text x="450" y="685" text-anchor="middle" font-size="12" fill="#9f1239">RECEIVED</text>
+  <text x="450" y="700" text-anchor="middle" font-size="10" fill="#64748b">add_user_message(session_id, msg)</text>
+
+  <line x1="450" y1="706" x2="450" y2="725" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+  <!-- Phase 2: MEMORY_CAPTURE -->
+  <rect x="320" y="725" width="260" height="50" rx="5" fill="#ffffff" stroke="#fda4af" stroke-width="1.2"/>
+  <text x="340" y="742" font-size="9" fill="#be123c" font-weight="bold">②</text>
+  <text x="450" y="742" text-anchor="middle" font-size="12" fill="#9f1239">MEMORY_CAPTURE</text>
+  <text x="450" y="758" text-anchor="middle" font-size="10" fill="#64748b">LLM 抽取 durable memory</text>
+  <text x="450" y="770" text-anchor="middle" font-size="10" fill="#64748b">→ store_extracted_memories()</text>
+
+  <line x1="450" y1="775" x2="450" y2="795" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+  <!-- Phase 3: KNOWLEDGE_RETRIEVAL -->
+  <rect x="320" y="795" width="260" height="50" rx="5" fill="#ffffff" stroke="#fda4af" stroke-width="1.2"/>
+  <text x="340" y="812" font-size="9" fill="#be123c" font-weight="bold">③</text>
+  <text x="450" y="812" text-anchor="middle" font-size="12" fill="#9f1239">KNOWLEDGE_RETRIEVAL</text>
+  <text x="450" y="828" text-anchor="middle" font-size="10" fill="#64748b">KnowledgeService → FastGPT</text>
+  <text x="450" y="840" text-anchor="middle" font-size="10" fill="#64748b">→ state.knowledge_context</text>
+
+  <!-- External FastGPT -->
+  <rect x="650" y="800" width="150" height="36" rx="5" fill="#e0f2fe" stroke="#7dd3fc" stroke-width="1"/>
+  <text x="725" y="822" text-anchor="middle" font-size="11" fill="#0369a1">FastGPT API</text>
+  <line x1="580" y1="818" x2="648" y2="818" stroke="#0ea5e9" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow-blue)"/>
+
+  <line x1="450" y1="845" x2="450" y2="865" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+  <!-- Phase 4: PROMPT_BUILD -->
+  <rect x="320" y="865" width="260" height="50" rx="5" fill="#ffffff" stroke="#fda4af" stroke-width="1.2"/>
+  <text x="340" y="882" font-size="9" fill="#be123c" font-weight="bold">④</text>
+  <text x="450" y="882" text-anchor="middle" font-size="12" fill="#9f1239">PROMPT_BUILD</text>
+  <text x="450" y="898" text-anchor="middle" font-size="10" fill="#64748b">memory_context + knowledge_context</text>
+  <text x="450" y="910" text-anchor="middle" font-size="10" fill="#64748b">→ effective_message</text>
+
+  <line x1="450" y1="915" x2="450" y2="935" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+  <!-- Phase 5: PLANNING -->
+  <rect x="320" y="935" width="260" height="50" rx="5" fill="#ffffff" stroke="#fda4af" stroke-width="1.2"/>
+  <text x="340" y="952" font-size="9" fill="#be123c" font-weight="bold">⑤</text>
+  <text x="450" y="952" text-anchor="middle" font-size="12" fill="#9f1239">PLANNING</text>
+  <text x="450" y="968" text-anchor="middle" font-size="10" fill="#64748b">LLM + tool_schemas → planning_response</text>
+  <text x="450" y="980" text-anchor="middle" font-size="10" fill="#64748b">→ tool_calls[] or direct answer</text>
+
+  <!-- Decision diamond after planning -->
+  <polygon points="450,1000 530,1030 450,1060 370,1030" fill="#ffffff" stroke="#fda4af" stroke-width="1.2"/>
+  <text x="450" y="1034" text-anchor="middle" font-size="10" fill="#9f1239">tool_calls?</text>
+
+  <!-- No tool calls - direct answer (left) -->
+  <line x1="370" y1="1030" x2="200" y2="1030" stroke="#10b981" stroke-width="1.2"/>
+  <line x1="200" y1="1030" x2="200" y2="1100" stroke="#10b981" stroke-width="1.2" marker-end="url(#arrow-green)"/>
+  <text x="270" y="1022" font-size="10" fill="#059669">无 tool call</text>
+
+  <rect x="110" y="1100" width="180" height="36" rx="5" fill="#ecfdf5" stroke="#6ee7b7" stroke-width="1.2"/>
+  <text x="200" y="1118" text-anchor="middle" font-size="11" fill="#065f46">⑦ RESPONDING</text>
+  <text x="200" y="1132" text-anchor="middle" font-size="10" fill="#64748b">直接输出 planning_text</text>
+
+  <!-- Has tool calls (right) -->
+  <line x1="530" y1="1030" x2="680" y2="1030" stroke="#475569" stroke-width="1.2"/>
+  <line x1="680" y1="1030" x2="680" y2="1070" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <text x="590" y="1022" font-size="10" fill="#475569">有 tool call</text>
+
+  <!-- Phase 6: TOOL_EXECUTION -->
+  <rect x="560" y="1070" width="240" height="50" rx="5" fill="#ffffff" stroke="#fda4af" stroke-width="1.2"/>
+  <text x="580" y="1087" font-size="9" fill="#be123c" font-weight="bold">⑥</text>
+  <text x="680" y="1087" text-anchor="middle" font-size="12" fill="#9f1239">TOOL_EXECUTION</text>
+  <text x="680" y="1103" text-anchor="middle" font-size="10" fill="#64748b">ToolDispatcher.dispatch()</text>
+  <text x="680" y="1115" text-anchor="middle" font-size="10" fill="#64748b">→ tool_results[]</text>
+
+  <line x1="680" y1="1120" x2="680" y2="1145" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+  <!-- Phase 7: RESPONDING (with tools) -->
+  <rect x="560" y="1145" width="240" height="50" rx="5" fill="#ecfdf5" stroke="#6ee7b7" stroke-width="1.2"/>
+  <text x="580" y="1162" font-size="9" fill="#065f46" font-weight="bold">⑦</text>
+  <text x="680" y="1162" text-anchor="middle" font-size="12" fill="#065f46">RESPONDING</text>
+  <text x="680" y="1178" text-anchor="middle" font-size="10" fill="#64748b">LLM stream_final_answer()</text>
+  <text x="680" y="1190" text-anchor="middle" font-size="10" fill="#64748b">基于 tool_results 生成回答</text>
+
+  <!-- Both paths converge -->
+  <line x1="200" y1="1136" x2="200" y2="1220" stroke="#10b981" stroke-width="1.2"/>
+  <line x1="200" y1="1220" x2="380" y2="1220" stroke="#10b981" stroke-width="1.2"/>
+  <line x1="680" y1="1195" x2="680" y2="1220" stroke="#10b981" stroke-width="1.2"/>
+  <line x1="680" y1="1220" x2="520" y2="1220" stroke="#10b981" stroke-width="1.2"/>
+
+  <!-- Phase 8: COMPLETED -->
+  <rect x="380" y="1205" width="140" height="32" rx="5" fill="#f0fdf4" stroke="#4ade80" stroke-width="1.5"/>
+  <text x="450" y="1225" text-anchor="middle" font-size="12" fill="#166534" font-weight="bold">⑧ COMPLETED</text>
+
+  <line x1="450" y1="1237" x2="450" y2="1260" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+  <!-- Save assistant message -->
+  <rect x="340" y="1260" width="220" height="28" rx="5" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="450" y="1278" text-anchor="middle" font-size="10" fill="#475569">add_assistant_message(session_id, text)</text>
+
+  <!-- Final output -->
+  <line x1="450" y1="1288" x2="450" y2="1310" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Output -->
+  <rect x="340" y="1350" width="220" height="36" rx="18" fill="#1e293b" stroke="none"/>
+  <text x="450" y="1373" text-anchor="middle" font-size="13" fill="#ffffff" font-weight="bold">SSE Stream → 前端</text>
+
+  <!-- Legend -->
+  <rect x="40" y="1350" width="250" height="40" rx="4" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="1"/>
+  <line x1="55" y1="1365" x2="85" y2="1365" stroke="#475569" stroke-width="1.5"/>
+  <text x="90" y="1369" font-size="10" fill="#475569">同步调用</text>
+  <line x1="55" y1="1380" x2="85" y2="1380" stroke="#0ea5e9" stroke-width="1.2" stroke-dasharray="4,3"/>
+  <text x="90" y="1384" font-size="10" fill="#0369a1">外部服务调用</text>
+</svg>

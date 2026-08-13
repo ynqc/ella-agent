@@ -2,6 +2,7 @@ from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 import json
 import logging
+from typing import Optional
 
 from app.agent.hooks import (
 	AgentChunkEvent,
@@ -15,6 +16,7 @@ from app.llm.client import LLMClient
 from app.llm.prompt_builder import EffectiveUserMessageRequest
 from app.memory.memory_manager import MemoryManager
 from app.services.tool_dispatcher import ToolDispatcher
+from app.services.knowledge_service import KnowledgeService
 
 
 class AgentRuntime:
@@ -27,12 +29,14 @@ class AgentRuntime:
 		memory_manager: MemoryManager,
 		logger: logging.Logger,
 		hooks: list[AgentRuntimeHook] | None = None,
+		knowledge_service: Optional['KnowledgeService'] = None,
 	) -> None:
 		self._tool_dispatcher = tool_dispatcher
 		self._llm_client = llm_client
 		self._memory_manager = memory_manager
 		self._logger = logger
 		self._hooks = hooks or []
+		self._knowledge_service = knowledge_service
 
 	def _now(self) -> datetime:
 		return datetime.now(UTC)
@@ -162,8 +166,16 @@ class AgentRuntime:
 
 	def _build_effective_message(self, state: AgentState) -> AgentState:
 		state.memory_context = self._memory_manager.build_memory_context(state.session_id, state.user_message)
+
+		# Combine memory context and RAG knowledge context
+		combined_context = ""
+		if state.memory_context:
+			combined_context += f"User Memory:\n{state.memory_context}\n\n"
+		if state.knowledge_context:
+			combined_context += f"External Knowledge:\n{state.knowledge_context}\n\n"
+
 		state.effective_message = self._llm_client.prompt_builder.build_effective_user_message(
-			EffectiveUserMessageRequest(message=state.user_message, memory_context=state.memory_context or "")
+			EffectiveUserMessageRequest(message=state.user_message, memory_context=combined_context.strip())
 		)
 		return state
 
@@ -190,6 +202,12 @@ class AgentRuntime:
 
 		self._set_phase(state, AgentPhase.MEMORY_CAPTURE)
 		state = await self._capture_user_memory(state)
+
+		self._set_phase(state, AgentPhase.KNOWLEDGE_RETRIEVAL)
+		if self._knowledge_service:
+			self._logger.info("Retrieving knowledge from FastGPT...")
+			state.knowledge_context = await self._knowledge_service.retrieve_knowledge(state.user_message, session_id=state.session_id)
+			self._logger.info(f"Retrieved {len(state.knowledge_context or '')} chars of knowledge")
 
 		self._set_phase(state, AgentPhase.PROMPT_BUILD)
 		state = self._build_effective_message(state)

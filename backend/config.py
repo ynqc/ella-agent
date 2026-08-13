@@ -31,6 +31,8 @@ class Settings:
 	ssnc_case_id: str = os.getenv("SSNC_CASE_ID", "")
 	ssnc_base_url: str = os.getenv("SSNC_BASE_URL", "https://api-ai-us.ssnc-corp.cloud/v1")
 	ssnc_model: str = os.getenv("SSNC_MODEL", "Qwen/Qwen3-30B-A3B")
+	fastgpt_api_key: str = os.getenv("FASTGPT_API_KEY", "")
+	fastgpt_base_url: str = os.getenv("FASTGPT_BASE_URL", "http://localhost:3000/api")
 	ssnc_temperature: float = float(os.getenv("SSNC_TEMPERATURE", "0"))
 	agent_runtime_debug_enabled: bool = os.getenv("AGENT_RUNTIME_DEBUG_ENABLED", "false").lower() in {
 		"1",
@@ -44,6 +46,7 @@ class Settings:
 	)
 	database_url: str = os.getenv(
 		"DATABASE_URL",
+		
 		"postgresql+psycopg://postgres:postgres@localhost:5432/ella_agent",
 	)
 	memory_ranker_constraint_weight: float = float(os.getenv("MEMORY_RANKER_CONSTRAINT_WEIGHT", "5.0"))

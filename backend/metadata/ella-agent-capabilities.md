@@ -6,6 +6,7 @@
 
 - `ella-agent-capabilities-chat.md`
 - `ella-agent-capabilities-memory.md`
+- `ella-agent-capabilities-rag.md`
 - `ella-agent-capabilities-workflow-foundation.md`
 - `ella-agent-capabilities-tools-and-runtime.md`
 - `ella-agent-capabilities-cache-and-testing.md`

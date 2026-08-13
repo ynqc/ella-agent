@@ -8,6 +8,7 @@ from app.agent.state import AgentRunResult, AgentState
 from app.llm.client import LLMClient
 from app.memory.memory_manager import MemoryManager
 from app.services.tool_dispatcher import ToolDispatcher
+from app.services.knowledge_service import KnowledgeService
 
 
 class ChatAgent:
@@ -20,12 +21,14 @@ class ChatAgent:
 		logger: logging.Logger | None = None,
 		memory_manager: MemoryManager | None = None,
 		runtime_hooks: list[AgentRuntimeHook] | None = None,
+		knowledge_service: KnowledgeService | None = None,
 	) -> None:
 		self._tool_dispatcher = tool_dispatcher or ToolDispatcher()
 		self._logger = logger or logging.getLogger(__name__)
 		self._llm_client = llm_client or LLMClient(self._logger)
 		self._memory_manager = memory_manager or MemoryManager()
 		self._runtime_hooks = runtime_hooks or []
+		self._knowledge_service = knowledge_service or KnowledgeService()
 
 	def _build_runtime(self) -> AgentRuntime:
 		return AgentRuntime(
@@ -34,6 +37,7 @@ class ChatAgent:
 			memory_manager=self._memory_manager,
 			logger=self._logger,
 			hooks=self._runtime_hooks,
+			knowledge_service=self._knowledge_service,
 		)
 
 	async def run(self, session_id: str, message: str) -> AgentRunResult:

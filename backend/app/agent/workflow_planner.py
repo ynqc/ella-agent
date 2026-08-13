@@ -6,7 +6,7 @@ from app.workflows.contracts import BugWorkflowInput, MeetingWorkflowInput
 from app.workflows.utils import load_json_object, optional_text
 
 
-WORKFLOW_PLANNER_PROMPT = """You are a workflow intent router for Ella Agent.
+WORKFLOW_INTENT_CLASSIFICATION_PROMPT = """You are a workflow intent classifier for Ella Agent.
 Return JSON only.
 
 Decide whether the user request should run a deterministic workflow or stay in normal chat.
@@ -16,21 +16,38 @@ Supported workflows:
 - bug: for requests to analyze a bug report, produce root cause analysis, draft a Jira comment, or post a Jira update.
 
 Output schema:
-- route: string, one of "workflow", "clarify", or "chat"
+- route: string, one of "workflow" or "chat"
 - workflow_type: string, one of "meeting", "bug", or ""
-- input: object
-- missing_fields: string[]
-- clarification_message: string
 - rationale: short string
 
 Rules:
 - If the message does not clearly ask for one of the supported workflows, return route="chat".
-- Do not invent missing required workflow inputs. If a required field is missing, return route="clarify" and ask one concise follow-up question.
-- When route="clarify", include already-known workflow input fields inside input.
+- If the message clearly asks for one of the supported workflows, return route="workflow" with the best matching workflow_type.
+"""
+
+WORKFLOW_SLOT_FILLING_PROMPT = """You are extracting workflow input fields for Ella Agent.
+Return JSON only.
+
+You will receive:
+- workflow_type
+- user request
+- known_input
+
+Output schema:
+- route: string, one of "workflow" or "clarify"
+- input: object
+- missing_fields: string[]
+- rationale: short string
+
+Rules:
+- Extract only fields relevant to the provided workflow_type.
+- Use known_input as already confirmed fields and avoid contradicting it unless the user clearly corrects a value.
+- If all required fields are available, return route="workflow".
+- If required fields are still missing or unclear, return route="clarify".
 - For meeting workflow input, use fields: transcript, meeting_title, channel, send_to_teams.
 - For bug workflow input, use fields: bug_report, issue_key, post_to_jira.
-- Default channel to "engineering" when the user wants a meeting workflow and does not specify one.
-- Default send_to_teams and post_to_jira to false unless the user explicitly asks to send/post.
+- Default channel to "engineering" when omitted.
+- Default send_to_teams and post_to_jira to false unless explicitly requested.
 """
 
 WORKFLOW_CLARIFICATION_RESOLUTION_PROMPT = """You are resolving missing workflow inputs for Ella Agent.
@@ -41,20 +58,20 @@ You will receive:
 - original user request
 - missing_fields
 - user follow-up answer
+- known_input
 
 Output schema:
 - route: string, one of "workflow" or "clarify"
-- workflow_type: string
 - input: object
 - missing_fields: string[]
-- clarification_message: string
 - rationale: short string
 
 Rules:
+- Preserve the existing workflow_type; do not classify a new workflow.
+- Use known_input as already confirmed fields and add newly resolved fields from the follow-up answer.
 - If the follow-up answer fills all required missing fields, return route="workflow".
-- If fields are still missing or unclear, return route="clarify" with one concise follow-up question.
+- If fields are still missing or unclear, return route="clarify".
 - You may return only the newly resolved fields inside input. The system will merge them with previously known input.
-- Preserve previously known workflow intent.
 - For meeting workflow input, use fields: transcript, meeting_title, channel, send_to_teams.
 - For bug workflow input, use fields: bug_report, issue_key, post_to_jira.
 - Default channel to "engineering" when omitted.
@@ -75,6 +92,13 @@ class WorkflowClarification:
 	missing_fields: list[str]
 	message: str
 	input_payload: dict[str, object] = field(default_factory=dict)
+	rationale: str = ""
+
+
+@dataclass(frozen=True)
+class WorkflowIntent:
+	route: str
+	workflow_type: str = ""
 	rationale: str = ""
 
 
@@ -162,22 +186,46 @@ class WorkflowPlanner:
 		joined_parts = "、".join(prompt_parts)
 		return f"要继续执行 {workflow_type} workflow，我还需要这些信息：{joined_parts}。"
 
-	def _parse_plan_payload(self, payload: dict[str, object]) -> WorkflowPlan | WorkflowClarification | None:
+	def _parse_intent_payload(self, payload: dict[str, object]) -> WorkflowIntent | None:
 		route = optional_text(payload.get("route"))
 		if route == "chat":
 			return None
+		if route != "workflow":
+			return None
 		workflow_type = optional_text(payload.get("workflow_type"))
+		if not workflow_type or workflow_type not in self._allowed_input_fields:
+			return None
+		return WorkflowIntent(
+			route=route,
+			workflow_type=workflow_type,
+			rationale=optional_text(payload.get("rationale")),
+		)
+
+	def _parse_slot_filling_payload(
+		self,
+		payload: dict[str, object],
+		*,
+		workflow_type: str,
+		known_input: dict[str, object] | None = None,
+		default_rationale: str = "",
+	) -> WorkflowPlan | WorkflowClarification | None:
+		route = optional_text(payload.get("route"))
+		if route == "chat":
+			return None
 		input_payload = payload.get("input")
 		if input_payload is None:
 			input_payload = {}
 		if not isinstance(input_payload, dict):
 			raise ValueError("WorkflowPlanner input must be a JSON object.")
 		input_payload = self._sanitize_input_payload(workflow_type, input_payload)
-		inferred_missing_fields = self._detect_missing_required_fields(workflow_type, input_payload)
+		effective_payload = {
+			**self._sanitize_input_payload(workflow_type, known_input or {}),
+			**input_payload,
+		}
+		inferred_missing_fields = self._detect_missing_required_fields(workflow_type, effective_payload)
+		rationale = optional_text(payload.get("rationale")) or default_rationale
 		if route == "clarify":
 			missing_fields = payload.get("missing_fields")
-			if not workflow_type:
-				return None
 			if not isinstance(missing_fields, list):
 				raise ValueError("WorkflowPlanner missing_fields must be a JSON array.")
 			merged_missing_fields = self._deduplicate_fields(
@@ -190,11 +238,9 @@ class WorkflowPlanner:
 				missing_fields=merged_missing_fields,
 				message=self._build_clarification_message(workflow_type, merged_missing_fields),
 				input_payload=input_payload,
-				rationale=optional_text(payload.get("rationale")),
+				rationale=rationale,
 			)
 		if route != "workflow":
-			return None
-		if not workflow_type:
 			return None
 		if inferred_missing_fields:
 			return WorkflowClarification(
@@ -202,24 +248,73 @@ class WorkflowPlanner:
 				missing_fields=inferred_missing_fields,
 				message=self._build_clarification_message(workflow_type, inferred_missing_fields),
 				input_payload=input_payload,
-				rationale=optional_text(payload.get("rationale")),
+				rationale=rationale,
 			)
 
 		return WorkflowPlan(
 			workflow_type=workflow_type,
 			input_payload=input_payload,
-			rationale=optional_text(payload.get("rationale")),
+			rationale=rationale,
 		)
 
-	async def plan(self, message: str) -> WorkflowPlan | WorkflowClarification | None:
+	def _parse_plan_payload(self, payload: dict[str, object]) -> WorkflowPlan | WorkflowClarification | None:
+		workflow_type = optional_text(payload.get("workflow_type"))
+		if not workflow_type:
+			return None
+		return self._parse_slot_filling_payload(payload, workflow_type=workflow_type)
+
+	async def classify_intent(self, message: str) -> WorkflowIntent | None:
 		text = await self._llm_client.invoke_text(
 			[
-				{"role": "system", "content": WORKFLOW_PLANNER_PROMPT},
+				{"role": "system", "content": WORKFLOW_INTENT_CLASSIFICATION_PROMPT},
 				{"role": "user", "content": message.strip()},
 			]
 		)
-		payload = load_json_object(text, "WorkflowPlanner")
-		return self._parse_plan_payload(payload)
+		payload = load_json_object(text, "WorkflowIntentClassifier")
+		return self._parse_intent_payload(payload)
+
+	async def fill_workflow_slots(
+		self,
+		*,
+		workflow_type: str,
+		message: str,
+		known_input: dict[str, object] | None = None,
+		default_rationale: str = "",
+	) -> WorkflowPlan | WorkflowClarification | None:
+		text = await self._llm_client.invoke_text(
+			[
+				{"role": "system", "content": WORKFLOW_SLOT_FILLING_PROMPT},
+				{
+					"role": "user",
+					"content": json.dumps(
+						{
+							"workflow_type": workflow_type,
+							"user_request": message.strip(),
+							"known_input": known_input or {},
+						},
+						ensure_ascii=False,
+						indent=2,
+					),
+				},
+			]
+		)
+		payload = load_json_object(text, "WorkflowSlotFiller")
+		return self._parse_slot_filling_payload(
+			payload,
+			workflow_type=workflow_type,
+			known_input=known_input,
+			default_rationale=default_rationale,
+		)
+
+	async def plan(self, message: str) -> WorkflowPlan | WorkflowClarification | None:
+		intent = await self.classify_intent(message)
+		if intent is None:
+			return None
+		return await self.fill_workflow_slots(
+			workflow_type=intent.workflow_type,
+			message=message,
+			default_rationale=intent.rationale,
+		)
 
 	async def resolve_clarification(
 		self,
@@ -248,7 +343,12 @@ class WorkflowPlanner:
 			]
 		)
 		payload = load_json_object(text, "WorkflowClarificationResolver")
-		return self._parse_plan_payload(payload)
+		return self._parse_slot_filling_payload(
+			payload,
+			workflow_type=clarification.workflow_type,
+			known_input=clarification.input_payload,
+			default_rationale=clarification.rationale,
+		)
 
 	@staticmethod
 	def serialize_plan(plan: WorkflowPlan | WorkflowClarification | None) -> str:

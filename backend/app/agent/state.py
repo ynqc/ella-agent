@@ -8,6 +8,7 @@ class AgentPhase(StrEnum):
 	INITIALIZED = "initialized"
 	RECEIVED = "received"
 	MEMORY_CAPTURE = "memory_capture"
+	KNOWLEDGE_RETRIEVAL = "knowledge_retrieval"
 	PROMPT_BUILD = "prompt_build"
 	PLANNING = "planning"
 	TOOL_EXECUTION = "tool_execution"
@@ -28,17 +29,21 @@ class AgentState:
 	error: str | None = None
 	effective_message: str | None = None
 	memory_context: str | None = None
+	knowledge_context: str | None = None
 	memory_extraction_messages: list[dict[str, Any]] = field(default_factory=list)
 	raw_memories: list[dict[str, object]] = field(default_factory=list)
 	extracted_memories: list[dict[str, object]] = field(default_factory=list)
+
 	tools: list[dict[str, Any]] = field(default_factory=list)
 	tool_schemas: list[dict[str, Any]] = field(default_factory=list)
 	planning_messages: list[dict[str, Any]] = field(default_factory=list)
 	planning_text: str = ""
+
 	llm_with_tools: Any | None = None
 	planning_response: Any | None = None
 	tool_calls: list[dict[str, Any]] = field(default_factory=list)
 	tool_results: list[dict[str, Any]] = field(default_factory=list)
+
 	tool_followup_messages: list[dict[str, Any]] = field(default_factory=list)
 	planner_result: dict[str, Any] | None = None
 	pending_workflow_clarification: dict[str, Any] | None = None
@@ -63,6 +68,7 @@ class AgentState:
 			"error": self.error,
 			"effective_message": self.effective_message,
 			"memory_context": self.memory_context,
+			"knowledge_context": self.knowledge_context,
 			"memory_extraction_messages": self.memory_extraction_messages,
 			"raw_memories": self.raw_memories,
 			"extracted_memories": self.extracted_memories,

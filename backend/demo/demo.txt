@@ -1,0 +1,52 @@
+1 普通chat
+解释一下 AirflowSkipException 是什么，什么时候应该用它？
+
+帮我把这段话润色得更专业一些：我们这周先把接口联调做完，下周再处理告警噪音。
+
+2 tool
+帮我查一下今天下午 3 点到 6 点有没有日程安排。
+
+
+3 metting
+请帮我整理下面这段会议纪要，输出 summary、action items 和 memo，并发到 Teams。
+
+会议标题：Weekly Sync
+会议纪要：
+Alice: 这周发布先延后两天，QA backlog 还没清完。
+Bob: 我来负责跟 QA 对齐，明天下午给出清理计划。
+Carol: 支付链路没有新问题，但需要补充回归测试。
+结论：发布时间延后两天，Bob 负责推进 QA backlog 清理。
+
+
+把这段会议纪要整理成 memo：
+
+今天讨论了发布风险。QA backlog 还比较高，所以决定把发布时间延后两天。Bob 负责明天下午前给出处理计划。
+
+4 bug
+帮我分析下面这个 bug，给出 root cause，并生成 Jira comment，直接发到 Jira。
+
+issue key: BUG-123
+bug report:
+生产环境在昨天发布后，部分用户结账时返回 500。
+日志里看到 payment gateway timeout 明显升高。
+回滚后问题缓解。
+
+分析这个 bug 并帮我写 Jira comment：
+BUG-456
+用户在 checkout 页面点击提交后偶发 500，发布后开始出现，怀疑和支付超时处理有关。
+
+5 bug 需要 clarify
+帮我分析这个 bug，并生成 Jira comment。
+
+帮我分析这个 bug 并发 Jira comment：
+
+生产环境 checkout 在发布后开始返回 500，日志显示 payment gateway timeout 激增，回滚后恢复正常。
+
+BUG-123
+
+6 memory
+记一下：我更喜欢你默认用中文回答；我们当前项目的数据库是 PostgreSQL，部署在测试环境时不要动生产库。
+现在帮我总结一下这个项目接下来改数据库相关逻辑时要注意什么？
+
+记一下：Ella Agent 现在优先做 Agent Planner；短期内先不要扩新的 workflow 类型，只优化 meeting 和 bug 两条链路。
+你觉得我下一步应该优先做什么？

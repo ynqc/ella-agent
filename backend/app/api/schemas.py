@@ -28,6 +28,7 @@ class AgentStateDebugResponse(BaseModel):
 	error: str | None
 	effective_message: str | None
 	memory_context: str | None
+	knowledge_context: str | None
 	memory_extraction_messages: list[dict[str, Any]]
 	raw_memories: list[dict[str, Any]]
 	extracted_memories: list[dict[str, Any]]
