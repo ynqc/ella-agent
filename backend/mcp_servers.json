@@ -1,0 +1,16 @@
+{
+  "servers": {
+    "mock-jira": {
+      "command": "python",
+      "args": ["mcp_servers/mock_jira_server.py"],
+      "env": {},
+      "enabled": true
+    },
+    "mock-github": {
+      "command": "python",
+      "args": ["mcp_servers/mock_github_server.py"],
+      "env": {},
+      "enabled": true
+    }
+  }
+}

@@ -120,7 +120,7 @@ RECEIVED → MEMORY_CAPTURE → KNOWLEDGE_RETRIEVAL → PROMPT_BUILD → PLANNIN
 - [x] AgentState 中 knowledge_context 字段
 - [x] 环境变量配置
 - [x] 无 API Key 时优雅降级
-- [x] 异常兜底（网络错误、超时）
+- [x] 异常兜底（网络错误、超时）—— service 层 + runtime 层双层防护，详见 `ella-agent-capabilities-rag-fault-tolerance.md`
 
 ### 未实现（依赖外部 FastGPT）
 

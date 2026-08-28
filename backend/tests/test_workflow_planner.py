@@ -161,6 +161,18 @@ class WorkflowPlannerExecutionTests(unittest.IsolatedAsyncioTestCase):
 		self.assertIsNone(result)
 		self.assertEqual(len(llm_client.calls), 1)
 
+	async def test_bug_search_requests_stay_in_chat(self) -> None:
+		llm_client = StubLLMClient([
+			'{"route":"chat","workflow_type":"","rationale":"jira search request"}'
+		])
+		planner = WorkflowPlanner(llm_client=llm_client)
+
+		result = await planner.plan("帮我查一下 Jira 里和 login bug 相关的 issue")
+
+		self.assertIsNone(result)
+		self.assertEqual(len(llm_client.calls), 1)
+		self.assertIn("Requests to merely search, list, fetch, look up, or query Jira bugs/issues/PRs should stay in normal chat", llm_client.calls[0][0]["content"])
+
 	async def test_resolve_clarification_uses_slot_resolution_only(self) -> None:
 		llm_client = StubLLMClient([
 			'{"route":"workflow","input":{"issue_key":"BUG-123"},"missing_fields":[],"rationale":"resolved"}'

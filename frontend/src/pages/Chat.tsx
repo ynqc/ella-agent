@@ -3,6 +3,7 @@ import type { FormEvent, KeyboardEvent } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
+import { ArtifactCard, shouldShowArtifact } from './ArtifactCard'
 import './Chat.css'
 
 type Message = {
@@ -10,12 +11,23 @@ type Message = {
   role: 'assistant' | 'user'
   content: string
   phases?: PhaseEvent[]
+  artifacts?: ArtifactEvent[]
 }
 
 type PhaseEvent = {
   phase: string
   message: string
   tools?: string[]
+}
+
+type ArtifactEvent = {
+  type: 'artifact'
+  artifact_key: string
+  artifact: unknown
+  step_name: string
+  step_status: string
+  workflow_type: string
+  duration_ms: number
 }
 
 type ChatThread = {
@@ -79,11 +91,21 @@ function sanitizeMessage(value: unknown): Message | null {
     }
   }
 
+  const artifacts: ArtifactEvent[] = []
+  if (Array.isArray((candidate as Record<string, unknown>).artifacts)) {
+    for (const a of (candidate as Record<string, unknown>).artifacts as unknown[]) {
+      if (a && typeof a === 'object' && typeof (a as Record<string, unknown>).artifact_key === 'string') {
+        artifacts.push(a as ArtifactEvent)
+      }
+    }
+  }
+
   return {
     id: candidate.id,
     role: candidate.role,
     content: typeof candidate.content === 'string' ? candidate.content : '',
     phases: phases.length > 0 ? phases : undefined,
+    artifacts: artifacts.length > 0 ? artifacts : undefined,
   }
 }
 
@@ -375,15 +397,28 @@ export default function Chat() {
           const line = lines[i]
           if (line.startsWith(EVENT_PREFIX)) {
             try {
-              const event = JSON.parse(line.slice(EVENT_PREFIX.length)) as PhaseEvent
-              updateThread(threadId, (thread) => ({
-                ...thread,
-                messages: thread.messages.map((item) =>
-                  item.id === assistantId
-                    ? { ...item, phases: [...(item.phases || []), event] }
-                    : item,
-                ),
-              }))
+              const raw = JSON.parse(line.slice(EVENT_PREFIX.length))
+              if (raw.type === 'artifact') {
+                const artifact = raw as ArtifactEvent
+                updateThread(threadId, (thread) => ({
+                  ...thread,
+                  messages: thread.messages.map((item) =>
+                    item.id === assistantId
+                      ? { ...item, artifacts: [...(item.artifacts || []), artifact] }
+                      : item,
+                  ),
+                }))
+              } else {
+                const event = raw as PhaseEvent
+                updateThread(threadId, (thread) => ({
+                  ...thread,
+                  messages: thread.messages.map((item) =>
+                    item.id === assistantId
+                      ? { ...item, phases: [...(item.phases || []), event] }
+                      : item,
+                  ),
+                }))
+              }
             } catch {
               // ignore malformed event
             }
@@ -491,6 +526,15 @@ export default function Chat() {
                         ))}
                       </div>
                     )}
+                    {message.artifacts && message.artifacts.length > 0 && (
+                      <div className="artifact-list">
+                        {message.artifacts
+                          .filter((a) => shouldShowArtifact(a))
+                          .map((artifact, idx) => (
+                            <ArtifactCard key={`${artifact.artifact_key}-${idx}`} artifact={artifact} />
+                          ))}
+                      </div>
+                    )}
                     <div className="message-content message-markdown">
                       {message.content ? (
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -519,7 +563,7 @@ export default function Chat() {
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={handleComposerKeyDown}
               placeholder="Type your request here..."
-              rows={4}
+              rows={2}
               disabled={isStreaming}
             />
             <button className="composer-button" type="submit" disabled={!canSend}>

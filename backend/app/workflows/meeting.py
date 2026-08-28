@@ -226,7 +226,7 @@ class SendTeamsStep:
 			raise ValueError("SendTeamsStep requires a memo artifact.")
 
 		channel = optional_text(context.input_payload.get("channel")) or "engineering"
-		result = self._tool_dispatcher.dispatch(
+		result = await self._tool_dispatcher.dispatch(
 			"send_teams_message",
 			{
 				"channel": channel,

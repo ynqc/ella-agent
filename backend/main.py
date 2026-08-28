@@ -1,12 +1,17 @@
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.chat import router as chat_router
 from app.api.workflows import router as workflow_router
+from app.api.dependencies import init_services
+from app.mcp.manager import MCPManager
 from app.memory.database import init_db
 from config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def configure_application_logging() -> None:
@@ -17,7 +22,30 @@ def configure_application_logging() -> None:
 configure_application_logging()
 init_db()
 
-app = FastAPI(title="Ella Agent API")
+mcp_manager: MCPManager | None = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+	global mcp_manager
+	mcp_manager = MCPManager()
+	try:
+		await mcp_manager.connect()
+		logger.info("MCP manager started: %d tools available", len(mcp_manager.list_tools()))
+	except Exception as exc:
+		logger.error("MCP manager failed to start: %s", exc)
+		mcp_manager = None
+
+	init_services(mcp_manager=mcp_manager)
+
+	yield
+
+	if mcp_manager:
+		await mcp_manager.shutdown()
+		logger.info("MCP manager shut down")
+
+
+app = FastAPI(title="Ella Agent API", lifespan=lifespan)
 
 app.add_middleware(
 	CORSMiddleware,
@@ -29,6 +57,10 @@ app.add_middleware(
 
 app.include_router(chat_router)
 app.include_router(workflow_router)
+
+
+def get_mcp_manager() -> MCPManager | None:
+	return mcp_manager
 
 
 @app.get("/health")

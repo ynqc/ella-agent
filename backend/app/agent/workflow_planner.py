@@ -23,6 +23,8 @@ Output schema:
 Rules:
 - If the message does not clearly ask for one of the supported workflows, return route="chat".
 - If the message clearly asks for one of the supported workflows, return route="workflow" with the best matching workflow_type.
+- Bug workflow is only for explicit bug-analysis/update tasks such as analyzing a bug report, generating root cause analysis, drafting a Jira comment, or posting a Jira update.
+- Requests to merely search, list, fetch, look up, or query Jira bugs/issues/PRs should stay in normal chat so the agent can use tools instead of the bug workflow.
 """
 
 WORKFLOW_SLOT_FILLING_PROMPT = """You are extracting workflow input fields for Ella Agent.

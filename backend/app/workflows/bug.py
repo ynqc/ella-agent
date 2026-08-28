@@ -175,7 +175,7 @@ class PostJiraCommentStep:
 			raise ValueError("PostJiraCommentStep requires a jira_comment artifact.")
 
 		issue_key = optional_text(context.input_payload.get("issue_key"))
-		result = self._tool_dispatcher.dispatch(
+		result = await self._tool_dispatcher.dispatch(
 			"post_jira_comment",
 			{
 				"issue_key": issue_key,

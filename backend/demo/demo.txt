@@ -50,3 +50,8 @@ BUG-123
 
 记一下：Ella Agent 现在优先做 Agent Planner；短期内先不要扩新的 workflow 类型，只优化 meeting 和 bug 两条链路。
 你觉得我下一步应该优先做什么？
+
+
+7 帮我查一下 Jira 里和 login bug 相关的 issue       MCP server
+
+8 帮我看一下 org/repo 当前有哪些 open PR        MCP server

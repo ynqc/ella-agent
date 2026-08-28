@@ -179,9 +179,9 @@ class AgentRuntime:
 		)
 		return state
 
-	def _run_tool_calls(self, state: AgentState) -> AgentState:
+	async def _run_tool_calls(self, state: AgentState) -> AgentState:
 		state.tool_results = [
-			self._tool_dispatcher.dispatch(tool_call["name"], tool_call["args"])
+			await self._tool_dispatcher.dispatch(tool_call["name"], tool_call["args"])
 			for tool_call in state.tool_calls
 		]
 		return state
@@ -277,7 +277,7 @@ class AgentRuntime:
 		self._set_phase(state, AgentPhase.TOOL_EXECUTION)
 		tool_names = [tc["name"] for tc in state.tool_calls]
 		yield self._progress_event("tool_execution", f"正在执行工具: {', '.join(tool_names)}", tools=tool_names)
-		state = self._run_tool_calls(state)
+		state = await self._run_tool_calls(state)
 		yield self._progress_event("tool_execution", f"工具执行完成，获得 {len(state.tool_results)} 个结果", result_count=len(state.tool_results))
 		self._logger.info(
 			"tool execution results: %s",

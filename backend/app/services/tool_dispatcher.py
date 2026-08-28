@@ -1,18 +1,34 @@
-from typing import Any
+from __future__ import annotations
+
+from typing import Any, TYPE_CHECKING
 
 from app.tools.base import build_tool_response
 from app.tools.base import BaseTool
 from app.tools.registry import ToolRegistry
 
+if TYPE_CHECKING:
+	from app.mcp.manager import MCPManager
+
 
 class ToolDispatcher:
-	def __init__(self, registry: ToolRegistry | None = None) -> None:
+	def __init__(
+		self,
+		registry: ToolRegistry | None = None,
+		mcp_manager: MCPManager | None = None,
+	) -> None:
 		self._registry = registry or ToolRegistry()
+		self._mcp_manager = mcp_manager
 
 	def list_tools(self) -> list[dict[str, Any]]:
-		return self._registry.list_tools()
+		tools = self._registry.list_tools()
+		if self._mcp_manager and self._mcp_manager.connected:
+			tools = tools + self._mcp_manager.list_tools()
+		return tools
 
-	def dispatch(self, tool_name: str, params: dict | None = None) -> dict[str, Any]:
+	async def dispatch(self, tool_name: str, params: dict | None = None) -> dict[str, Any]:
+		if self._mcp_manager and self._mcp_manager.has_tool(tool_name):
+			return await self._mcp_manager.call_tool(tool_name, params)
+
 		tool = self._registry.get(tool_name)
 		if tool is None:
 			return build_tool_response(

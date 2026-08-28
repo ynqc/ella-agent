@@ -118,7 +118,7 @@ class WorkflowService:
 			post_to_jira=post_to_jira,
 		)
 
-	def _build_send_teams_step_result(self, *, channel: str, memo: str, send_to_teams: bool) -> tuple[WorkflowStepResult, dict[str, object]]:
+	async def _build_send_teams_step_result(self, *, channel: str, memo: str, send_to_teams: bool) -> tuple[WorkflowStepResult, dict[str, object]]:
 		started_at = self._now()
 		if not send_to_teams:
 			completed_at = self._now()
@@ -140,7 +140,7 @@ class WorkflowService:
 				artifact,
 			)
 
-		result = self._tool_dispatcher.dispatch(
+		result = await self._tool_dispatcher.dispatch(
 			"send_teams_message",
 			{
 				"channel": channel,
@@ -230,7 +230,7 @@ class WorkflowService:
 			return replace(updated_result, status=type(updated_result.status).FAILED, error=error)
 		return updated_result
 
-	def _build_post_jira_step_result(self, *, issue_key: str, jira_comment: str, post_to_jira: bool) -> tuple[WorkflowStepResult, dict[str, object]]:
+	async def _build_post_jira_step_result(self, *, issue_key: str, jira_comment: str, post_to_jira: bool) -> tuple[WorkflowStepResult, dict[str, object]]:
 		started_at = self._now()
 		if not post_to_jira:
 			completed_at = self._now()
@@ -252,7 +252,7 @@ class WorkflowService:
 				artifact,
 			)
 
-		result = self._tool_dispatcher.dispatch(
+		result = await self._tool_dispatcher.dispatch(
 			"post_jira_comment",
 			{
 				"issue_key": issue_key,

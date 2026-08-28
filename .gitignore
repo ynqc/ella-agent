@@ -5,6 +5,8 @@
 .idea/
 .vscode/*
 !.vscode/extensions.json
+.claude/
+.playwright-mcp/
 
 # Python backend
 __pycache__/

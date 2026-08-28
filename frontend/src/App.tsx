@@ -6,22 +6,14 @@ import Home from './pages/Home'
 function App() {
   return (
     <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand-block">
-          <p className="eyebrow">Ella Agent</p>
-          <h1>Workspace</h1>
-          <p className="brand-copy">
-            Manage navigation on the left and render each route in a dedicated
-            workspace on the right.
-          </p>
-        </div>
-
-        <nav className="sidebar-nav" aria-label="Primary">
+      <header className="topbar">
+        <span className="topbar-brand">Ella Agent</span>
+        <nav className="topbar-nav" aria-label="Primary">
           <NavLink
             to="/"
             end
             className={({ isActive }) =>
-              isActive ? 'nav-link nav-link-active' : 'nav-link'
+              isActive ? 'topbar-link topbar-link-active' : 'topbar-link'
             }
           >
             Home
@@ -29,13 +21,13 @@ function App() {
           <NavLink
             to="/chat"
             className={({ isActive }) =>
-              isActive ? 'nav-link nav-link-active' : 'nav-link'
+              isActive ? 'topbar-link topbar-link-active' : 'topbar-link'
             }
           >
             Chat
           </NavLink>
         </nav>
-      </aside>
+      </header>
 
       <main className="content-shell">
         <div className="content-card">

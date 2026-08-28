@@ -30,17 +30,6 @@ class ChatService:
 	def _now(self) -> datetime:
 		return datetime.now(UTC)
 
-	def _progress_event(self, phase: str, message: str, **extra: object) -> str:
-		payload = {"type": "phase", "phase": phase, "message": message, **extra}
-		return f"§event:{json.dumps(payload, ensure_ascii=False)}\n"
-
-	def _get_workflow_step_names(self, workflow_type: str) -> list[str]:
-		step_map = {
-			"meeting": ["summary", "action_items", "memo", "save_memory", "send_teams"],
-			"bug": ["analysis", "jira_comment", "post_jira_comment"],
-		}
-		return step_map.get(workflow_type, [])
-
 	def _format_workflow_output(self, plan: WorkflowPlan, result: WorkflowRunResult) -> str:
 		cache_hit = False if result.cache is None else bool(result.cache.get("hit", False))
 		cache_text = "命中" if cache_hit else "未命中"
@@ -274,6 +263,27 @@ class ChatService:
 		payload = {"type": "phase", "phase": phase, "message": message, **extra}
 		return f"§event:{json.dumps(payload, ensure_ascii=False)}\n"
 
+	def _artifact_event(
+		self,
+		*,
+		artifact_key: str,
+		artifact: object,
+		step_name: str,
+		step_status: str,
+		workflow_type: str,
+		duration_ms: float,
+	) -> str:
+		payload = {
+			"type": "artifact",
+			"artifact_key": artifact_key,
+			"artifact": artifact,
+			"step_name": step_name,
+			"step_status": step_status,
+			"workflow_type": workflow_type,
+			"duration_ms": duration_ms,
+		}
+		return f"§event:{json.dumps(payload, ensure_ascii=False)}\n"
+
 	def _get_workflow_step_names(self, workflow_type: str) -> list[str]:
 		step_map = {
 			"meeting": ["summary", "action_items", "memo", "save_memory", "send_teams"],
@@ -326,7 +336,7 @@ class ChatService:
 				**plan.input_payload,
 			)
 
-			# Report each step result
+			# Report each step result and emit artifacts
 			for step in workflow_result.steps:
 				status_text = {"success": "✓", "failed": "✗", "skipped": "○"}.get(step.status.value, "?")
 				yield self._progress_event(
@@ -336,6 +346,15 @@ class ChatService:
 					step_status=step.status.value,
 					duration_ms=step.duration_ms,
 				)
+				if step.artifact_key and step.artifact is not None:
+					yield self._artifact_event(
+						artifact_key=step.artifact_key,
+						artifact=step.artifact,
+						step_name=step.step_name,
+						step_status=step.status.value,
+						workflow_type=plan.workflow_type,
+						duration_ms=step.duration_ms,
+					)
 
 			yield self._progress_event("responding", "正在生成回答...")
 			yield self._build_workflow_run_result(
